@@ -3,5 +3,5 @@
 version = 3
 
 [[package]]
-name = "gaussian-integral-aproximation"
+name = "gaussian-integral-approximation"
 version = "0.1.0"
