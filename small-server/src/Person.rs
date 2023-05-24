@@ -48,7 +48,7 @@ pub async fn list_person(
     State(database_connection_pool): State<Pool<Postgres>>,
 ) -> (StatusCode, Json<Value>) {
     let Query(pagination) = maybe_pagination.unwrap_or_default();
-    let size = pagination.size.unwrap_or(10) as i64;
+    let size = i64::from(pagination.size.unwrap_or(10));
     let offset = size * pagination.page.unwrap_or(0);
     let query_result = sqlx::query_as!(
         Person,
@@ -63,24 +63,25 @@ pub async fn list_person(
         .fetch_one(&database_connection_pool)
         .await;
 
-    let Ok(row_count) = row_query_result else {
-        return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"error": row_query_result.err().unwrap().to_string()})),
-        );
-    };
-
-    match query_result {
-        Ok(person_vec) => {
+    match (query_result, row_query_result) {
+        (Ok(person_vec), Ok(row_query)) => {
             return (
                 StatusCode::OK,
-                Json(serde_json::json!({"total":row_count.count, "hits":person_vec})),
+                Json(
+                    serde_json::json!({"total":row_query.count.unwrap_or_default(), "hits":person_vec}),
+                ),
             );
         }
-        Err(error) => {
+        (Err(error), Ok(_)) | (Ok(_), Err(error)) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({"error":error.to_string()})),
+            );
+        }
+        (Err(error), Err(error_count)) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"errors":[error.to_string(), error_count.to_string()]})),
             );
         }
     }

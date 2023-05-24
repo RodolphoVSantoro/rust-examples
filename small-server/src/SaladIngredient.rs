@@ -8,35 +8,34 @@ use sqlx::{Pool, Postgres};
 
 use super::Pagination::{Pagination, RowCount};
 
-#[derive(serde::Deserialize)]
-pub struct NewFruit {
-    pub fruit_name: String,
-    pub color_red: i16,
-    pub color_green: i16,
-    pub color_blue: i16,
-    pub fruit_weight: i32,
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct NewSaladIngredient {
+    pub id_salad: i64,
+    pub id_fruit: i64,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
-pub struct Fruit {
+pub struct SaladIngredient {
     pub id: i64,
-    pub fruit_name: String,
-    pub color_red: i16,
-    pub color_green: i16,
-    pub color_blue: i16,
-    pub fruit_weight: i32,
+    pub id_salad: i64,
+    pub id_fruit: i64,
 }
 
-pub async fn get_fruit_by_id(
-    Path(fruit_id): Path<i64>,
+pub async fn get_salad_ingredient_by_id(
+    Path(salad_ingredient_id): Path<i64>,
     State(database_connection_pool): State<Pool<Postgres>>,
 ) -> (StatusCode, Json<Value>) {
-    let query_result = sqlx::query_as!(Fruit, "SELECT * FROM FRUIT WHERE ID = $1", fruit_id)
-        .fetch_one(&database_connection_pool)
-        .await;
+    let query_result = sqlx::query_as!(
+        SaladIngredient,
+        "SELECT * FROM SALAD_INGREDIENTS WHERE ID = $1",
+        salad_ingredient_id
+    )
+    .fetch_one(&database_connection_pool)
+    .await;
+
     match query_result {
-        Ok(fruit) => {
-            return (StatusCode::OK, Json(serde_json::json!(fruit)));
+        Ok(salad) => {
+            return (StatusCode::OK, Json(serde_json::json!(salad)));
         }
         Err(error) => {
             return (
@@ -47,7 +46,7 @@ pub async fn get_fruit_by_id(
     }
 }
 
-pub async fn list_fruit(
+pub async fn list_salad_ingredients(
     maybe_pagination: Option<Query<Pagination>>,
     State(database_connection_pool): State<Pool<Postgres>>,
 ) -> (StatusCode, Json<Value>) {
@@ -55,15 +54,18 @@ pub async fn list_fruit(
     let size = i64::from(pagination.size.unwrap_or(10));
     let offset = size * pagination.page.unwrap_or(0);
     let query_result = sqlx::query_as!(
-        Fruit,
-        "SELECT * FROM FRUIT LIMIT $1 OFFSET $2",
+        SaladIngredient,
+        r#"
+        SELECT * FROM SALAD_INGREDIENTS 
+        LIMIT $1 OFFSET $2
+        "#,
         size,
         offset,
     )
     .fetch_all(&database_connection_pool)
     .await;
 
-    let row_query_result = sqlx::query_as!(RowCount, "SELECT COUNT(1) from FRUIT")
+    let row_query_result = sqlx::query_as!(RowCount, "SELECT COUNT(1) from SALAD_INGREDIENTS")
         .fetch_one(&database_connection_pool)
         .await;
 
@@ -75,10 +77,10 @@ pub async fn list_fruit(
     };
 
     match query_result {
-        Ok(fruit_vec) => {
+        Ok(salad_vec) => {
             return (
                 StatusCode::OK,
-                Json(serde_json::json!({"total":row_count.count,"hits":fruit_vec})),
+                Json(serde_json::json!({"total":row_count.count,"hits":salad_vec})),
             );
         }
         Err(error) => {
@@ -90,30 +92,27 @@ pub async fn list_fruit(
     }
 }
 
-pub async fn insert_fruit(
+pub async fn insert_salad_ingredient(
     State(database_connection_pool): State<Pool<Postgres>>,
-    body: Result<Json<NewFruit>, JsonRejection>,
+    body: Result<Json<NewSaladIngredient>, JsonRejection>,
 ) -> (StatusCode, Json<Value>) {
     match body {
-        Ok(fruit_json) => {
+        Ok(ingredient_json) => {
             let query_result = sqlx::query_as!(
-                Fruit,
+                SaladIngredient,
                 r#"
-                INSERT INTO FRUIT ( FRUIT_NAME, COLOR_RED, COLOR_GREEN, COLOR_BLUE, FRUIT_WEIGHT ) 
-                VALUES ( $1, $2, $3, $4, $5 ) 
-                RETURNING ID, FRUIT_NAME, COLOR_RED, COLOR_GREEN, COLOR_BLUE, FRUIT_WEIGHT
+                INSERT INTO SALAD_INGREDIENTS ( ID_SALAD, ID_FRUIT ) 
+                VALUES ( $1, $2 ) 
+                RETURNING ID, ID_SALAD, ID_FRUIT
                 "#,
-                fruit_json.fruit_name,
-                fruit_json.color_red,
-                fruit_json.color_green,
-                fruit_json.color_blue,
-                fruit_json.fruit_weight
+                ingredient_json.id_salad,
+                ingredient_json.id_fruit,
             )
             .fetch_one(&database_connection_pool)
             .await;
             match query_result {
-                Ok(fruit) => {
-                    return (StatusCode::CREATED, Json(serde_json::json!(fruit)));
+                Ok(salad) => {
+                    return (StatusCode::CREATED, Json(serde_json::json!(salad)));
                 }
                 Err(json_error) => {
                     return (

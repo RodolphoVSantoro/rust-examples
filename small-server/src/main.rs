@@ -15,9 +15,17 @@ mod Person;
 #[allow(non_snake_case)]
 mod Salad;
 
+#[allow(non_snake_case)]
+mod SaladIngredient;
+
 use Fruit::{get_fruit_by_id, insert_fruit, list_fruit};
 use Person::{get_person_by_id, insert_person, list_person};
-use Salad::{get_salad_by_id, insert_salad, list_salad};
+use Salad::{
+    get_salad_by_id, insert_salad, list_salad, list_salad_all_ingredients, list_salads_by_user_id,
+};
+use SaladIngredient::{
+    get_salad_ingredient_by_id, insert_salad_ingredient, list_salad_ingredients,
+};
 
 #[tokio::main]
 async fn main() {
@@ -34,6 +42,7 @@ async fn main() {
     let person_router = Router::new()
         .route("/", post(insert_person))
         .route("/:user_id", get(get_person_by_id))
+        .route("/:user_id/salad", get(list_salads_by_user_id))
         .route("/", get(list_person));
 
     let fruit_router = Router::new()
@@ -43,13 +52,20 @@ async fn main() {
 
     let salad_router = Router::new()
         .route("/", post(insert_salad))
+        .route("/", get(list_salad))
         .route("/:salad_id", get(get_salad_by_id))
-        .route("/", get(list_salad));
+        .route("/:salad_id/ingredients", get(list_salad_all_ingredients));
+
+    let ingredient_router = Router::new()
+        .route("/", post(insert_salad_ingredient))
+        .route("/", get(list_salad_ingredients))
+        .route("/:ingredient_id", get(get_salad_ingredient_by_id));
 
     let app = Router::new()
         .nest("/person", person_router)
         .nest("/fruit", fruit_router)
         .nest("/salad", salad_router)
+        .nest("/ingredient", ingredient_router)
         .with_state(database_connection_pool);
 
     let port: SocketAddr = "127.0.0.1:3000".parse().unwrap();

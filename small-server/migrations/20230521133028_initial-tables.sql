@@ -14,9 +14,16 @@ CREATE TABLE PERSON (ID bigserial,
                                                                              PRIMARY KEY(ID));
 
 
-CREATE TABLE FAVORITE_SALADS (ID_SALAD bigserial,
-                              ID_CREATOR bigserial,
-                              ID_FRUIT bigserial,
-                              PRIMARY KEY(ID_SALAD),
-                              FOREIGN KEY (ID_CREATOR) REFERENCES PERSON(ID),
-                              FOREIGN KEY (ID_FRUIT) REFERENCES FRUIT(ID));
+CREATE TABLE FRUIT_SALAD (ID bigserial,
+                          SALAD_NAME VARCHAR(100) NOT NULL,
+                                                  ID_CREATOR bigserial,
+                                                  PRIMARY KEY(ID),
+                          FOREIGN KEY(ID_CREATOR) REFERENCES PERSON(ID));
+
+
+CREATE TABLE SALAD_INGREDIENTS (ID bigserial,
+                                ID_SALAD bigserial NOT NULL,
+                                                   ID_FRUIT bigserial,
+                                                   PRIMARY KEY(ID),
+                                FOREIGN KEY (ID_SALAD) REFERENCES FRUIT_SALAD(ID),
+                                FOREIGN KEY (ID_FRUIT) REFERENCES FRUIT(ID));
