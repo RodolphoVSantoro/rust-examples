@@ -1,14 +1,22 @@
 CREATE TABLE FRUIT (ID bigserial,
-                    FRUIT_NAME "char"[], COLOR "char"[], FRUIT_WEIGHT INTEGER, PRIMARY KEY(ID));
+                    FRUIT_NAME VARCHAR(100) NOT NULL,
+                                            COLOR_RED smallint NOT NULL,
+                                                               COLOR_GREEN smallint NOT NULL,
+                                                                                    COLOR_BLUE smallint NOT NULL,
+                                                                                                        FRUIT_WEIGHT INTEGER NOT NULL,
+                                                                                                                             PRIMARY KEY(ID));
 
 
 CREATE TABLE PERSON (ID bigserial,
-                     PERSON_NAME "char"[], age INTEGER, EMAIL "char"[],PRIMARY KEY(ID));
+                     PERSON_NAME VARCHAR(100) NOT NULL,
+                                              AGE INTEGER NOT NULL,
+                                                          EMAIL VARCHAR(100) NOT NULL,
+                                                                             PRIMARY KEY(ID));
 
 
-CREATE TABLE FAVORITE_SALAD (ID bigserial,
-                             ID_CREATOR bigserial,
-                             ID_FRUIT bigserial,
-                             PRIMARY KEY(ID),
-                             FOREIGN KEY (ID_CREATOR) REFERENCES PERSON(ID),
-                             FOREIGN KEY (ID_FRUIT) REFERENCES FRUIT(ID));
+CREATE TABLE FAVORITE_SALADS (ID_SALAD bigserial,
+                              ID_CREATOR bigserial,
+                              ID_FRUIT bigserial,
+                              PRIMARY KEY(ID_SALAD),
+                              FOREIGN KEY (ID_CREATOR) REFERENCES PERSON(ID),
+                              FOREIGN KEY (ID_FRUIT) REFERENCES FRUIT(ID));
