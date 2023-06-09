@@ -1,7 +1,8 @@
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    Json,
+    routing::{get, post},
+    Json, Router,
 };
 use serde_json::Value;
 use sqlx::{Pool, Postgres};
@@ -21,6 +22,14 @@ pub struct Person {
     person_name: String,
     age: i32,
     email: String,
+}
+
+pub fn get_router() -> Router<Pool<Postgres>> {
+    return Router::new()
+        .route("/", post(insert_person))
+        .route("/:user_id", get(get_person_by_id))
+        .route("/:user_id/salad", get(crate::Salad::list_salads_by_user_id))
+        .route("/", get(list_person));
 }
 
 pub async fn get_person_by_id(

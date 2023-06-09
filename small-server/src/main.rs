@@ -1,11 +1,12 @@
-use axum::{
-    routing::{get, post},
-    Router,
-};
-use dotenv::dotenv;
+use crate::Errors::{DatabaseConnectionError, UnwrapPrint};
+use axum::Router;
 use sqlx::postgres::PgPoolOptions;
-use std::{net::SocketAddr, time::Duration};
+use sqlx::{Pool, Postgres};
+use std::net::SocketAddr;
+use std::time::Duration;
 
+#[allow(non_snake_case)]
+mod Errors;
 #[allow(non_snake_case)]
 mod Fruit;
 #[allow(non_snake_case)]
@@ -14,63 +15,61 @@ mod Pagination;
 mod Person;
 #[allow(non_snake_case)]
 mod Salad;
-
 #[allow(non_snake_case)]
 mod SaladIngredient;
 
-use Fruit::{get_fruit_by_id, insert_fruit, list_fruit};
-use Person::{get_person_by_id, insert_person, list_person};
-use Salad::{
-    get_salad_by_id, insert_salad, list_salad, list_salad_all_ingredients, list_salads_by_user_id,
-};
-use SaladIngredient::{
-    get_salad_ingredient_by_id, insert_salad_ingredient, list_salad_ingredients,
-};
+async fn get_postgres_connection_pool() -> Result<Pool<Postgres>, Errors::DatabaseConnectionError> {
+    let database_url_result = std::env::var("DATABASE_URL");
 
-#[tokio::main]
-async fn main() {
-    dotenv().expect("Failed to read environment file");
-    let database_url: String =
-        std::env::var("DATABASE_URL").expect("Unable to read DATABASE_URL env var");
-    let database_connection_pool = PgPoolOptions::new()
+    let database_url = match database_url_result {
+        Ok(database_url) => database_url,
+        Err(error) => return Err(DatabaseConnectionError::VarError(error)),
+    };
+
+    let connection_result = PgPoolOptions::new()
         .max_connections(10)
         .acquire_timeout(Duration::from_secs(10))
         .connect(&database_url)
-        .await
-        .expect("Could not connect to Database");
+        .await;
 
-    let person_router = Router::new()
-        .route("/", post(insert_person))
-        .route("/:user_id", get(get_person_by_id))
-        .route("/:user_id/salad", get(list_salads_by_user_id))
-        .route("/", get(list_person));
+    match connection_result {
+        Ok(connection_pool) => return Ok(connection_pool),
+        Err(error) => return Err(DatabaseConnectionError::ConnectionError(error)),
+    }
+}
 
-    let fruit_router = Router::new()
-        .route("/", post(insert_fruit))
-        .route("/:fruit_id", get(get_fruit_by_id))
-        .route("/", get(list_fruit));
+fn get_server_socket_addr() -> Result<SocketAddr, std::env::VarError> {
+    let address_result = std::env::var("SOCKET_ADDRESS");
+    let address = match address_result {
+        Ok(address) => address,
+        Err(error) => return Err(error),
+    };
 
-    let salad_router = Router::new()
-        .route("/", post(insert_salad))
-        .route("/", get(list_salad))
-        .route("/:salad_id", get(get_salad_by_id))
-        .route("/:salad_id/ingredients", get(list_salad_all_ingredients));
+    let address_result: Result<SocketAddr, _> = address.parse();
+    let address = match address_result {
+        Ok(address) => address,
+        Err(_) => return Err(std::env::VarError::NotPresent),
+    };
+    return Ok(address);
+}
 
-    let ingredient_router = Router::new()
-        .route("/", post(insert_salad_ingredient))
-        .route("/", get(list_salad_ingredients))
-        .route("/:ingredient_id", get(get_salad_ingredient_by_id));
+#[tokio::main]
+async fn main() {
+    dotenv::dotenv().expect("Failed to read environment file");
+
+    let database_connection_pool = get_postgres_connection_pool().await.unwrap_print();
 
     let app = Router::new()
-        .nest("/person", person_router)
-        .nest("/fruit", fruit_router)
-        .nest("/salad", salad_router)
-        .nest("/ingredient", ingredient_router)
+        .nest("/person", crate::Person::get_router())
+        .nest("/fruit", crate::Fruit::get_router())
+        .nest("/salad", crate::Salad::get_router())
+        .nest("/ingredient", crate::SaladIngredient::getRouter())
         .with_state(database_connection_pool);
 
-    let port: SocketAddr = "127.0.0.1:3000".parse().unwrap();
+    let port = get_server_socket_addr().unwrap_print();
+    println!("Server starting on {}", &port);
     axum::Server::bind(&port)
         .serve(app.into_make_service())
         .await
-        .unwrap();
+        .expect("Failed to start server");
 }

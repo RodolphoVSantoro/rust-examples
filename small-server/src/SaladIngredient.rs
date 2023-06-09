@@ -1,12 +1,20 @@
 use axum::{
     extract::{rejection::JsonRejection, Path, Query, State},
     http::StatusCode,
-    Json,
+    routing::{get, post},
+    Json, Router,
 };
 use serde_json::Value;
 use sqlx::{Pool, Postgres};
 
 use super::Pagination::{Pagination, RowCount};
+
+pub fn getRouter() -> Router<Pool<Postgres>> {
+    return Router::new()
+        .route("/", post(insert_salad_ingredient))
+        .route("/", get(list_salad_ingredients))
+        .route("/:ingredient_id", get(get_salad_ingredient_by_id));
+}
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct NewSaladIngredient {

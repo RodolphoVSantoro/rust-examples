@@ -1,7 +1,8 @@
 use axum::{
     extract::{rejection::JsonRejection, Path, Query, State},
     http::StatusCode,
-    Json,
+    routing::{get, post},
+    Json, Router,
 };
 use serde_json::Value;
 use sqlx::{Pool, Postgres};
@@ -25,6 +26,13 @@ pub struct Fruit {
     pub color_green: i16,
     pub color_blue: i16,
     pub fruit_weight: i32,
+}
+
+pub fn get_router() -> Router<Pool<Postgres>> {
+    return Router::new()
+        .route("/", post(insert_fruit))
+        .route("/:fruit_id", get(get_fruit_by_id))
+        .route("/", get(list_fruit));
 }
 
 pub async fn get_fruit_by_id(
@@ -125,7 +133,7 @@ pub async fn insert_fruit(
         }
         Err(json_error) => {
             return (
-                StatusCode::INTERNAL_SERVER_ERROR,
+                json_error.status(),
                 Json(serde_json::json!({"error":json_error.to_string()})),
             );
         }

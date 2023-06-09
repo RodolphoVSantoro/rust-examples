@@ -1,7 +1,8 @@
 use axum::{
     extract::{rejection::JsonRejection, Path, Query, State},
     http::StatusCode,
-    Json,
+    routing::{get, post},
+    Json, Router,
 };
 use serde_json::Value;
 use sqlx::{Pool, Postgres};
@@ -33,6 +34,14 @@ pub struct SaladIngredientsView {
     pub person_name: String,
     pub salad_name: String,
     pub fruit_name: String,
+}
+
+pub fn get_router() -> Router<Pool<Postgres>> {
+    return Router::new()
+        .route("/", post(insert_salad))
+        .route("/", get(list_salad))
+        .route("/:salad_id", get(get_salad_by_id))
+        .route("/:salad_id/ingredients", get(list_salad_all_ingredients));
 }
 
 pub async fn get_salad_by_id(
